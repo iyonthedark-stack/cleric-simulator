@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neverwinter Cleric Simulator v30 Mobile (Centralized Constants, Auto-Tooltips)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <style>
+        body { margin: 0; padding: 0; background-color: #0a0a0a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { background-color: #1a1a1a; box-shadow: 0 0 20px #000; cursor: crosshair; touch-action: none; }
+        #ui-layer { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 900px; height: 150px; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
+        .hud-cluster { position: relative; display: flex; align-items: center; justify-content: center; bottom: 10px; pointer-events: auto; }
+        .orb-container { position: relative; width: 100px; height: 100px; background: radial-gradient(circle, #222, #000); border-radius: 50%; border: 4px solid #444; box-shadow: 0 0 10px #000; overflow: hidden; margin: 0 10px; z-index: 10; }
+        .orb-fill { position: absolute; bottom: 0; width: 100%; transition: height 0.2s; }
+        #hp-orb .orb-fill { background: radial-gradient(circle at 50% 0%, #ff4d4d, #990000); }
+        #ap-orb .orb-fill { background: radial-gradient(circle at 50% 0%, #ffd700, #b8860b); }
+        .orb-text { position: absolute; width: 100%; text-align: center; top: 40%; font-weight: bold; text-shadow: 1px 1px 2px black; font-size: 14px; z-index: 11; }
+        .resource-bar { position: absolute; bottom: -10px; width: 200px; height: 12px; background: #222; border: 1px solid #555; border-radius: 6px; overflow: hidden; }
+        .bar-left { left: -180px; transform: skewX(20deg); }
+        .bar-right { right: -180px; transform: skewX(-20deg); }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.1s; }
+        #stamina-fill { background: #4caf50; }
+        #divinity-fill { background: #00bfff; box-shadow: 0 0 5px #00bfff; }
+        .skill-row { display: flex; gap: 8px; margin-bottom: 20px; pointer-events: auto; }
+        .skill-slot { width: 50px; height: 50px; background: #222; border: 2px solid #555; position: relative; display: flex; justify-content: center; align-items: center; cursor: help; }
+        .skill-slot:hover { border-color: white; }
+        .tooltip { visibility: hidden; width: 250px; background-color: rgba(0,0,0,0.9); color: #fff; text-align: left; border: 1px solid #777; padding: 10px; border-radius: 4px; position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); z-index: 100; opacity: 0; transition: opacity 0.2s; font-size: 12px; pointer-events: none; box-shadow: 0 0 10px rgba(0,0,0,0.8); }
+        .tooltip h4 { margin: 0 0 5px 0; color: #ffd700; font-size: 14px; border-bottom: 1px solid #555; padding-bottom: 3px; }
+        .tooltip .stat { color: #aaa; margin-bottom: 3px; display: block; }
+        .tooltip .desc { color: #ddd; font-style: italic; }
+        .skill-slot:hover .tooltip { visibility: visible; opacity: 1; }
+        .skill-icon { font-size: 20px; }
+        .at-will { background: #444; color: white; }
+        .encounter { background: #3a2020; color: #ff8888; }
+        .daily { background: #333300; color: #ffff00; }
+        .mechanic { background: #001a33; color: #00bfff; }
+        .keybind { position: absolute; top: -8px; left: -8px; background: #000; border: 1px solid #555; padding: 2px 4px; font-size: 10px; border-radius: 3px; color: #fff; }
+        .cooldown-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0,0,0,0.7); }
+        #instructions { position: absolute; top: 80px; left: 20px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; pointer-events: none; z-index: 50; }
+        h3 { margin: 0 0 10px 0; color: #ffd700; }
+        p { margin: 4px 0; font-size: 14px; }
+        .highlight { color: #00bfff; font-weight: bold; }
+        .top-ui-panel { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 8px; width: 320px; box-shadow: 0 0 10px #000; pointer-events: none; z-index: 50; }
+        #stats-node { display: flex; justify-content: space-between; text-align: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        #stats-node div { flex-basis: 33%; }
+        .stat-value { font-size: 20px; font-weight: bold; color: #ffd700; }
+        .stat-label { font-size: 10px; color: #aaa; }
+        #leaderboard h4 { margin: 5px 0; color: #00bfff; font-size: 14px; text-align: center; }
+        #leaderboard table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        #leaderboard th, #leaderboard td { padding: 4px; text-align: center; }
+        #leaderboard th { color: #fff; border-bottom: 1px solid #555; }
+        #new-game-button { position: absolute; top: 20px; left: 20px; background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; pointer-events: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: background-color 0.2s; z-index: 50; }
+        #new-game-button:hover { background: #2980b9; }
+        #game-over-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; z-index: 90; }
+        #game-end-message { display: none; background: rgba(0,0,0,0.8); padding: 30px; border-radius: 10px; border: 2px solid white; font-size: 48px; font-weight: bold; color: white; margin-bottom: 20px; }
+        #restart-button { display: none; padding: 15px 30px; font-size: 20px; font-weight: bold; background: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 4px #27ae60; pointer-events: auto; transition: background-color 0.2s; }
+        #restart-button:hover { background: #27ae60; }
+
+        /* Mobile controls overlay */
+        #mobile-controls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: 10px; z-index: 100; pointer-events: auto; }
+        #mobile-controls button {
+            width: 58px; height: 58px; font-size: 22px; border: none; border-radius: 8px;
+            background: #333; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        #mobile-controls button:active { background: #555; }
+        @media (max-width: 780px) {
+            #ui-layer { transform: translateX(-50%) scale(0.9); }
+            .top-ui-panel { transform: scale(0.9); transform-origin: top right; }
+            #instructions { transform: scale(0.9); transform-origin: top left; }
+        }
+        @media (max-width: 580px) {
+            #ui-layer { transform: translateX(-50%) scale(0.8); }
+            .top-ui-panel { transform: scale(0.8); }
+            #instructions { transform: scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <button id="new-game-button" onclick="startNewGame()">Start New Game</button>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="instructions">
+        <h3>Controls</h3>
+        <p><span class="highlight">WASD</span> Move (Mobile: ▲ ◀ ▶ ▼)</p>
+        <p><span class="highlight">Spacebar</span> Pause Game</p>
+        <p><span class="highlight">Mouse/Touch</span> Aim</p>
+        <p><span class="highlight">L-Click</span> Fire (Sacred Flame) (Mobile: 🔥)</p>
+        <p><span class="highlight">R-Click</span> Beam (Slows you by 25%) (Mobile: 🔦)</p>
+        <p><span class="highlight">Q</span> AoE Nuke (Needs Divinity) (Mobile: ⚡)</p>
+        <p><span class="highlight">E</span> Knockback/Heal (Mobile: 💥 via ⚡ + heal combo)</p>
+        <p><span class="highlight">R</span> Heal (Needs Divinity, Casting time!) (Mobile: ➕)</p>
+        <p><span class="highlight">1</span> Daily (Needs AP) (Mobile: 🛡️)</p>
+        <p><span class="highlight">TAB</span> Hold to Recharge Divinity (Mobile: hold not mapped; regen passive still works)</p>
+        <p><span class="highlight">SHIFT</span> Dodge (WASD Direction, Cancels Casts!) (Mobile: ↔)</p>
+        <p style="margin-top: 10px;"><span class="highlight">Stamina Exhaustion:</span></p>
+        <p>0% Stamina = <span style="color:red">50% Speed Slow</span>, Cannot Dodge.</p>
+        <p style="margin-top: 10px;"><span class="highlight">Game End:</span> 2:00</p>
+    </div>
+
+    <div class="top-ui-panel">
+        <div id="stats-node">
+            <div>
+                <div class="stat-value" id="score-display">0</div>
+                <div class="stat-label">SCORE</div>
+            </div>
+            <div>
+                <div class="stat-value" id="timer-display">0.0</div>
+                <div class="stat-label">NODE TIME (s)</div>
+            </div>
+            <div>
+                <div class="stat-value" id="kills-display">0</div>
+                <div class="stat-label">ENEMIES SLAIN</div>
+            </div>
+        </div>
+
+        <div id="leaderboard">
+            <h4>SESSION LEADERBOARD</h4>
+            <table>
+                <thead>
+                    <tr><th>#</th><th>Score</th><th>Time (s)</th><th>Kills</th></tr>
+                </thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="game-over-overlay">
+        <div id="game-end-message" style="display: none;"></div>
+        <button id="restart-button" onclick="startNewGame()" style="display: none;">Start New Game</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="skill-row" style="margin-right: 20px; align-self: flex-end;">
+            <div class="skill-slot daily" id="skill-daily">
+                <div class="keybind">1</div><div class="skill-icon">🛡️</div>
+                <div class="cooldown-overlay" id="cd-daily"></div>
+                <div class="tooltip"></div>
+            </div>
+
+            <div class="skill-slot encounter" id="skill-q">
+                <div class="keybind">Q</div><div class="skill-icon">⚡</div>
+                <div class="cooldown-overlay" id="cd-q"></div>
+                <div class="tooltip"></div>
+            </div>
+
+            <div class="skill-slot encounter" id="skill-e">
+                <div class="keybind">E</div><div class="skill-icon">💥</div>
+                <div class="cooldown-overlay" id="cd-e"></div>
+                <div class="tooltip"></div>
+            </div>
+
+            <div class="skill-slot encounter" id="skill-r">
+                <div class="keybind">R</div><div class="skill-icon">➕</div>
+                <div class="cooldown-overlay" id="cd-r"></div>
+                <div class="tooltip"></div>
+            </div>
+        </div>
+
+        <div class="hud-cluster">
+            <div class="orb-container" id="ap-orb">
+                <div class="orb-fill" id="ap-fill" style="height: 0%;"></div>
+                <div class="orb-text">AP</div>
+            </div>
+            <div class="orb-container" id="hp-orb" style="width: 130px; height: 130px; z-index: 12;">
+                <div class="orb-fill" id="hp-fill" style="height: 100%;"></div>
+                <div class="orb-text" id="hp-text">100%</div>
+            </div>
+            <div class="resource-bar bar-left"><div class="bar-fill" id="stamina-fill"></div></div>
+            <div class="resource-bar bar-right"><div class="bar-fill" id="divinity-fill"></div></div>
+        </div>
+
+        <div class="skill-row" style="margin-left: 20px; align-self: flex-end;">
+            <div class="skill-slot at-will" id="skill-lmb">
+                <div class="keybind">LMB</div><div class="skill-icon" style="color: #39FFAC;">🔥</div>
+                <div class="tooltip"></div>
+            </div>
+
+            <div class="skill-slot at-will" id="skill-rmb">
+                <div class="keybind">RMB</div><div class="skill-icon">🔦</div>
+                <div class="tooltip"></div>
+            </div>
+
+            <div class="skill-slot mechanic" id="skill-tab">
+                <div class="keybind">TAB</div><div class="skill-icon">⚖️</div>
+                <div class="tooltip"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile Controls -->
+<div id="mobile-controls">
+  <button id="btn-up">▲</button>
+  <button id="btn-left">◀</button>
+  <button id="btn-right">▶</button>
+  <button id="btn-down">▼</button>
+  <button id="btn-fire">🔥</button>
+  <button id="btn-beam">🔦</button>
+  <button id="btn-dodge">↔</button>
+  <button id="btn-heal">➕</button>
+  <button id="btn-aoe">⚡</button>
+  <button id="btn-daily">🛡️</button>
+</div>
+
+<script>
+/* ================================
+   CONSTANTS: Core game + skills
+   ================================ */
+const CANVAS_WIDTH = window.innerWidth;
+const CANVAS_HEIGHT = window.innerHeight;
+const FPS = 60;
+
+// Game timing and scoring
+const GAME_END_FRAME = 120 * FPS; // 2 minutes
+const SCORE_KILL_POINTS = 6;
+const SCORE_TIME_POINTS = 2;
+
+// Player core
+const PLAYER_SPEED = 5;
+const MAX_HP = 2000;
+const MAX_STAMINA = 100;
+const MAX_DIVINITY = 1000;
+const MAX_AP = 1000;
+const STAMINA_REGEN = 0.5;
+const DIVINITY_REGEN_PASSIVE = 2;
+const DIVINITY_REGEN_CHANNEL = 25;
+
+// Node/capture
+const GRID_SQUARE_SIZE = 100;
+let NODE_CENTER_X = CANVAS_WIDTH / 2;
+let NODE_CENTER_Y = CANVAS_HEIGHT / 2;
+let NODE_RADIUS = 4 * GRID_SQUARE_SIZE;
+
+// Stages/spawn rates
+const STAGE_1_END = 48 * FPS;
+const STAGE_2_END = 96 * FPS;
+const SPAWN_RATE_STAGE_1 = 480;
+const SPAWN_RATE_STAGE_2 = 360;
+const SPAWN_RATE_STAGE_3 = 240;
+
+// Debuffs
+const PLAYER_SLOW_DURATION_FRAMES = 4 * FPS; // 4s for player debuff
+
+// Skill stats centralized
+const SKILL_STATS = {
+    SACRED_FLAME: {
+        key: 'SACRED_FLAME',
+        name: 'Sacred Flame',
+        castFrames: 5,                // fire rate frames
+        damage: 180,
+        projectileSpeed: 15,
+        color: '#39FFAC',
+        slowPercent: 0.10,
+        slowDurationFrames: FPS,      // 1s per stack
+        apGain: 5,
+        desc: 'Large blue-green fireball. 10% stacking slow (1s per stack).'
+    },
+    LANCE_OF_FAITH: {
+        key: 'LANCE_OF_FAITH',
+        name: 'Lance of Faith',
+        tickFrames: 10,               // damage tick every 10 frames while held
+        damage: 110,
+        range: 600,
+        aimToleranceRad: 0.2,
+        slowMultiplierWhileChannel: 0.75, // player slow
+        apGainPerTick: 10,
+        desc: 'Radiant beam attack. Slows movement by 25% while channeling.'
+    },
+    DAUNTING_LIGHT: {
+        key: 'DAUNTING_LIGHT',
+        name: 'Daunting Light',
+        castFrames: Math.round(0.55 * FPS), // 33
+        damage: 1600,
+        radius: 90,
+        cooldownFrames: 120,          // 2s
+        divinityCost: 200,
+        apGainOnHit: 30,
+        desc: 'Calls down a pillar of light. Heavy AoE Radiant Damage.'
+    },
+    SUNBURST: {
+        key: 'SUNBURST',
+        name: 'Sun Burst',
+        castFrames: FPS,              // 1s
+        damage: 400,
+        heal: 200,
+        impactRadius: 2 * GRID_SQUARE_SIZE, // 200px
+        knockbackDistance: 3 * GRID_SQUARE_SIZE, // 300px
+        cooldownFrames: 240,          // 4s
+        desc: 'A burst of sunlight that knocks enemies back, deals damage, and heals the caster.'
+    },
+    BASTION_OF_HEALTH: {
+        key: 'BASTION_OF_HEALTH',
+        name: 'Bastion of Health',
+        castFrames: Math.round(0.5 * FPS), // 30
+        heal: 1000,
+        radius: 160,
+        cooldownFrames: 240,          // 4s
+        divinityCost: 300,
+        desc: 'Powerful AoE heal. Heal is instant on cast finish. No movement while casting.'
+    },
+    GUARDIAN_OF_FAITH: {
+        key: 'GUARDIAN_OF_FAITH',
+        name: 'Guardian of Faith',
+        castFrames: Math.round(1.5 * FPS), // 90
+        damage: 2800,
+        radius: 150,
+        stunFrames: 120,              // 2s
+        cooldownFrames: 100,          // display overlay only; AP gates usage
+        hotPerSecond: 100,
+        hotDurationFrames: 10 * FPS,  // 10s
+        desc: 'Summons a divine avatar. Damages/Stuns enemies (2s) and heals you 100hp/s for 10s.'
+    },
+    CHANNEL_DIVINITY: {
+        key: 'CHANNEL_DIVINITY',
+        name: 'Channel Divinity',
+        castFrames: Math.round(0.4 * FPS), // animation messaging
+        divinityRegenPerFrame: DIVINITY_REGEN_CHANNEL,
+        desc: 'Hold to restore Divinity rapidly. Movement is disabled while channeling.'
+    }
+};
+
+// Enemy types and stats
+const MOB_TYPES = { MELEE_DPS: 'MELEE_DPS', RANGED_DPS: 'RANGED_DPS', HEALER: 'HEALER' };
+const MOB_STATS = {
+    MELEE_DPS: { hp: 8000, speed: 2, radius: 25, color: '#ff4400', label: 'M-DPS' },
+    RANGED_DPS: { hp: 3000, speed: 4, radius: 20, color: '#3366ff', label: 'R-DPS' },
+    HEALER:    { hp: 5000, speed: 3, radius: 22, color: '#00cc00', label: 'HEAL' }
+};
+const mobTypesList = Object.values(MOB_TYPES);
+
+// Melee abilities
+const MELEE_WHIRLWIND_RANGE = 100;
+const MELEE_WHIRLWIND_DURATION = 300;
+const MELEE_WHIRLWIND_DAMAGE_PER_TICK = 100;
+
+const MELEE_LEAP_SLAM_RANGE = 200;
+const MELEE_LEAP_SLAM_DMG_RADIUS = 100;
+const MELEE_LEAP_SLAM_DAMAGE = 200;
+const MELEE_LEAP_SLAM_ACT_TIME = Math.round(0.5 * FPS); // 30
+const MELEE_LEAP_SLAM_COOLDOWN = 240;
+
+// Ranged/healer parameters
+const RANGED_ST_RANGE = 700;
+const RANGED_AOE_RADIUS = 100;
+const HEALER_HEAL_RANGE = 400;
+const HEALER_BASTION_RADIUS = 100;
+const RANGED_DPS_SAFE_DISTANCE = 400;
+const HEALER_SAFE_DISTANCE = 300;
+
+// Canvas
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_WIDTH;
+canvas.height = CANVAS_HEIGHT;
+
+// Input
+const keys = {};
+const mouse = { x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT/2, leftDown: false, rightDown: false };
+
+/* ================================
+   Globals
+   ================================ */
+let kills = 0;
+let timer = 0;
+let captureTimerFrames = 0;
+let globalFrameCount = 0;
+let gameActive = true;
+let leaderboard = [];
+let isPaused = false;
+
+/* ================================
+   Utility classes and functions
+   ================================ */
+class Vector {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { return new Vector(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+    mult(n) { return new Vector(this.x * n, this.y * n); }
+    mag() { return Math.sqrt(this.x*this.x + this.y*this.y); }
+    normalize() {
+        const m = this.mag();
+        return m === 0 ? new Vector(0,0) : new Vector(this.x/m, this.y/m);
+    }
+}
+
+function isOnNode(entity) {
+    if (entity.dead) return false;
+    const dx = entity.pos.x - NODE_CENTER_X;
+    const dy = entity.pos.y - NODE_CENTER_Y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance <= NODE_RADIUS;
+}
+
+function findLowestHpAlly(allies) {
+    let lowestAlly = null;
+    let lowestHPPercent = 1.1;
+    allies.forEach(e => {
+        if (!e.dead && e.hp / e.maxHp < 0.9) {
+            const currentPercent = e.hp / e.maxHp;
+            if (currentPercent < lowestHPPercent) {
+                lowestHPPercent = currentPercent;
+                lowestAlly = e;
+            }
+        }
+    });
+    return lowestAlly;
+}
+
+function findNearestHealer(self, allEntities) {
+    let nearest = null;
+    let minDist = Infinity;
+    allEntities.forEach(e => {
+        if (e !== self && !e.dead && e.type === MOB_TYPES.HEALER) {
+            let dist = e.pos.sub(self.pos).mag();
+            if (dist < minDist) { minDist = dist; nearest = e; }
+        }
+    });
+    return nearest;
+}
+
+/* ================================
+   Entities
+   ================================ */
+class Entity {
+    constructor(x, y, radius, color) {
+        this.pos = new Vector(x, y);
+        this.radius = radius;
+        this.color = color;
+        this.dead = false;
+    }
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
+class FloatingText extends Entity {
+    constructor(text, x, y, type) {
+        super(x, y, 0, 'transparent');
+        this.text = text;
+        this.life = 60;
+        this.velocity = new Vector(0, -1);
+        this.type = type;
+
+        const props = {
+            'dmg-player': { color: '#ff0000', size: 24, shadow: true },
+            'dmg-enemy':  { color: '#ffff00', size: 20, shadow: true },
+            'heal':       { color: '#00ff00', size: 20, shadow: true },
+            'poison':     { color: '#88ff00', size: 18, shadow: true },
+            'info':       { color: '#aaa', size: 16, shadow: false }
+        };
+
+        this.color = props[type].color;
+        this.fontSize = props[type].size;
+        this.shadow = props[type].shadow;
+    }
+    update() {
+        this.life--;
+        this.pos = this.pos.add(this.velocity);
+        this.velocity.y *= 0.95;
+        if (this.life <= 0) this.dead = true;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = this.life / 60;
+        ctx.font = `bold ${this.fontSize}px Arial`;
+        ctx.textAlign = 'center';
+        if (this.shadow) {
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 5;
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'black';
+            ctx.strokeText(this.text, this.pos.x, this.pos.y);
+        }
+        ctx.fillStyle = this.color;
+        ctx.fillText(this.text, this.pos.x, this.pos.y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class Player extends Entity {
+    constructor() {
+        super(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 20, '#00bfff');
+        this.hp = MAX_HP;
+        this.stamina = MAX_STAMINA;
+        this.divinity = MAX_DIVINITY;
+        this.ap = 0;
+        this.isDodging = false;
+        this.dodgeTimer = 0;
+        this.isChanneling = false;
+        this.isCasting = false;
+        this.castTimer = 0;
+        this.castCallback = null;
+        this.dodgeDir = new Vector(0,0);
+        this.isLancing = false;
+        this.isExhausted = false;
+        this.slowTimer = 0;
+        this.poisonTimer = 0;
+        this.guardianHoTTimer = 0;
+        this.cooldowns = { q: 0, e: 0, r: 0, daily: 0 };
+        this.maxCooldowns = {
+            q: SKILL_STATS.DAUNTING_LIGHT.cooldownFrames,
+            e: SKILL_STATS.SUNBURST.cooldownFrames,
+            r: SKILL_STATS.BASTION_OF_HEALTH.cooldownFrames,
+            daily: SKILL_STATS.GUARDIAN_OF_FAITH.cooldownFrames
+        };
+    }
+    update() {
+        if (!this.isDodging) this.stamina = Math.min(MAX_STAMINA, this.stamina + STAMINA_REGEN);
+
+        if (this.slowTimer > 0) this.slowTimer--;
+
+        if (this.poisonTimer > 0) {
+            if (this.poisonTimer % FPS === 0) {
+                this.takeDamage(50);
+                floatingTexts.push(new FloatingText("Poison!", this.pos.x, this.pos.y - 60, 'poison'));
+            }
+            this.poisonTimer--;
+        }
+
+        if (this.guardianHoTTimer > 0) {
+            if (this.guardianHoTTimer % FPS === 0) {
+                this.hp = Math.min(MAX_HP, this.hp + SKILL_STATS.GUARDIAN_OF_FAITH.hotPerSecond);
+                floatingTexts.push(new FloatingText(`+${SKILL_STATS.GUARDIAN_OF_FAITH.hotPerSecond}`, this.pos.x, this.pos.y - 40, 'heal'));
+            }
+            this.guardianHoTTimer--;
+        }
+
+        if (this.stamina <= 0 && !this.isExhausted) {
+            this.isExhausted = true;
+            floatingTexts.push(new FloatingText("EXHAUSTED", this.pos.x, this.pos.y - 60, 'dmg-player'));
+        }
+        if (this.isExhausted && this.stamina >= MAX_STAMINA) {
+            this.isExhausted = false;
+            floatingTexts.push(new FloatingText("Recovered", this.pos.x, this.pos.y - 60, 'heal'));
+        }
+
+        this.isChanneling = !!keys['tab'];
+        if (this.isCasting) {
+            this.castTimer--;
+            if (this.castTimer <= 0) {
+                if (this.castCallback) this.castCallback();
+                this.isCasting = false;
+                this.castCallback = null;
+            }
+        }
+
+        this.divinity = Math.min(MAX_DIVINITY, this.divinity + (this.isChanneling ? DIVINITY_REGEN_CHANNEL : DIVINITY_REGEN_PASSIVE));
+
+        for (let k in this.cooldowns) if (this.cooldowns[k] > 0) this.cooldowns[k]--;
+
+        let move = new Vector(0, 0);
+        if (keys['w']) move.y -= 1;
+        if (keys['s']) move.y += 1;
+        if (keys['a']) move.x -= 1;
+        if (keys['d']) move.x += 1;
+
+        let speedMultiplier = 1.0;
+        if (this.isLancing) speedMultiplier *= SKILL_STATS.LANCE_OF_FAITH.slowMultiplierWhileChannel;
+        if (this.slowTimer > 0) speedMultiplier *= 0.5;
+        if (this.isExhausted) speedMultiplier *= 0.5;
+
+        if (this.isDodging) {
+            this.dodgeTimer--;
+            if (this.dodgeTimer <= 0) this.isDodging = false;
+            this.pos = this.pos.add(this.dodgeDir.mult(12));
+        } else if (!this.isChanneling && !this.isCasting) {
+            if (move.mag() > 0) {
+                move = move.normalize();
+                this.pos = this.pos.add(move.mult(PLAYER_SPEED * speedMultiplier));
+            }
+        }
+
+        this.pos.x = Math.max(20, Math.min(CANVAS_WIDTH - 20, this.pos.x));
+        this.pos.y = Math.max(20, Math.min(CANVAS_HEIGHT - 20, this.pos.y));
+    }
+    initiateDodge(moveInput) {
+        const DODGE_STAMINA_COST = 20;
+        const DODGE_DURATION_FRAMES = 12;
+        if (this.stamina < DODGE_STAMINA_COST || this.isDodging || this.isChanneling || this.isExhausted) {
+            if (this.isExhausted) floatingTexts.push(new FloatingText("Too Tired!", this.pos.x, this.pos.y - 50, 'info'));
+            return;
+        }
+        if (this.isCasting) {
+            this.isCasting = false;
+            this.castCallback = null;
+            floatingTexts.push(new FloatingText("Cast Canceled", this.pos.x, this.pos.y - 60, 'info'));
+        }
+        this.stamina -= DODGE_STAMINA_COST;
+        this.isDodging = true;
+        this.dodgeTimer = DODGE_DURATION_FRAMES;
+        this.slowTimer = 0;
+        if (moveInput.mag() > 0) this.dodgeDir = moveInput.normalize();
+        else this.dodgeDir = new Vector(mouse.x, mouse.y).sub(this.pos).normalize().mult(-1);
+        floatingTexts.push(new FloatingText("DODGE", this.pos.x, this.pos.y - 40, 'info'));
+    }
+    takeDamage(amount) {
+        if (!gameActive) return;
+        if (this.isDodging) {
+            floatingTexts.push(new FloatingText("IMMUNE", this.pos.x, this.pos.y - 30, 'info'));
+            return;
+        }
+        this.hp -= amount;
+        floatingTexts.push(new FloatingText("-" + amount, this.pos.x, this.pos.y - 50, 'dmg-player'));
+        if (this.hp <= 0) {
+            gameActive = false;
+            updateLeaderboard(timer, kills);
+            const msg = document.getElementById('game-end-message');
+            msg.innerText = "YOU DIED";
+            msg.style.color = 'red';
+            msg.style.borderColor = 'red';
+            msg.style.display = 'block';
+            document.getElementById('restart-button').style.display = 'block';
+        }
+    }
+    addAp(amount) { this.ap = Math.min(MAX_AP, this.ap + amount); }
+    draw(ctx) {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(this.pos.x - 30, this.pos.y - 35, 60, 8);
+        ctx.fillStyle = 'red';
+        let pct = Math.max(0, this.hp / MAX_HP);
+        ctx.fillRect(this.pos.x - 30, this.pos.y - 35, 60 * pct, 8);
+        super.draw(ctx);
+        if (this.slowTimer > 0) {
+            ctx.font = "bold 14px Arial";
+            ctx.fillStyle = "#00bfff";
+            ctx.textAlign = 'center';
+            ctx.fillText("SLOW", this.pos.x, this.pos.y + 35);
+        }
+        if (this.poisonTimer > 0) {
+            ctx.font = "bold 14px Arial";
+            ctx.fillStyle = "#88ff00";
+            ctx.textAlign = 'center';
+            ctx.fillText("POISON", this.pos.x, this.pos.y + 50);
+        }
+        if (this.guardianHoTTimer > 0) {
+            ctx.beginPath();
+            ctx.arc(this.pos.x, this.pos.y, 25, 0, Math.PI*2);
+            ctx.strokeStyle = 'gold';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    }
+}
+
+class Enemy extends Entity {
+    constructor(x, y, type) {
+        const stats = MOB_STATS[type];
+        super(x, y, stats.radius, stats.color);
+        this.type = type;
+        this.hp = stats.hp;
+        this.maxHp = stats.hp;
+        this.speed = stats.speed;
+        this.basicAttackTimer = 0;
+        this.basicAttackCooldown = 60;
+        this.abilityTimer = 0;
+        this.isWhirlwinding = false;
+        this.stunTimer = 0;
+        this.slowStacks = []; // per-stack slow expiration frames
+    }
+    applySlow() {
+        const expire = globalFrameCount + SKILL_STATS.SACRED_FLAME.slowDurationFrames;
+        this.slowStacks.push(expire);
+    }
+    updateSlowStatus() {
+        this.slowStacks = this.slowStacks.filter(expireFrame => expireFrame > globalFrameCount);
+    }
+    getCurrentSlowMultiplier() {
+        const stacks = this.slowStacks.length;
+        if (stacks <= 0) return 1.0;
+        let slowFactor = 1.0 - (SKILL_STATS.SACRED_FLAME.slowPercent * stacks);
+        return Math.max(slowFactor, 0.1);
+    }
+    dispatchBasicAttack(player) {
+        if (this.type === MOB_TYPES.MELEE_DPS) mobMeleeAtWill(this, player);
+        else if (this.type === MOB_TYPES.RANGED_DPS) mobRangedAtWill(this, player);
+        else if (this.type === MOB_TYPES.HEALER) mobHealerAtWill(this, player);
+    }
+    dispatchAbility(player, allEnemies) {
+        if (this.type === MOB_TYPES.RANGED_DPS) {
+            if (Math.random() < 0.7) {
+                mobRangedSingle(this, player);
+                this.abilityTimer = 120;
+            } else {
+                mobRangedAoE(this, player);
+                this.abilityTimer = 300;
+            }
+        } else if (this.type === MOB_TYPES.HEALER) {
+            const allMobs = allEnemies.filter(e => e !== player);
+            const allyToHeal = findLowestHpAlly(allMobs.filter(e => e !== this));
+            const distToPlayer = player.pos.sub(this.pos).mag();
+            if (allyToHeal && allyToHeal.hp / allyToHeal.maxHp < 0.9) {
+                const distToAlly = allyToHeal.pos.sub(this.pos).mag();
+                if (distToAlly < HEALER_HEAL_RANGE && Math.random() < 0.5) {
+                    mobHealingWord(this, allyToHeal);
+                    this.abilityTimer = 180;
+                } else if (distToAlly < HEALER_HEAL_RANGE * 2) {
+                    mobBastion(this, allyToHeal, allMobs);
+                    this.abilityTimer = 420;
+                } else {
+                    this.abilityTimer = 100;
+                }
+            } else if (distToPlayer < RANGED_ST_RANGE && Math.random() < 0.2) {
+                mobRangedSingle(this, player, 200);
+                this.abilityTimer = 100;
+            } else {
+                this.abilityTimer = 100;
+            }
+        }
+    }
+    getAvoidanceVector(playerProjectiles, activeSplats) {
+        let avoidVec = new Vector(0,0);
+        let count = 0;
+        playerProjectiles.forEach(p => {
+            if (p.owner === player) {
+                let toP = this.pos.sub(p.pos);
+                let d = toP.mag();
+                if (d < 100) {
+                    let perp = new Vector(-p.velocity.y, p.velocity.x).normalize();
+                    if (perp.x * toP.x + perp.y * toP.y < 0) perp = perp.mult(-1);
+                    avoidVec = avoidVec.add(perp.mult(150 / (d + 1)));
+                    count++;
+                }
+            }
+        });
+        activeSplats.forEach(s => {
+            if (!s.dead && s.color !== '#00ff00' && s.color !== 'rgba(200, 255, 200, 0.9)') {
+                let toSplat = this.pos.sub(new Vector(s.x, s.y));
+                let d = toSplat.mag();
+                if (d < s.radius + 40) {
+                    avoidVec = avoidVec.add(toSplat.normalize().mult(200 / (d + 1)));
+                    count++;
+                }
+            }
+        });
+        if (count > 0) return avoidVec.normalize();
+        return new Vector(0,0);
+    }
+    update(player, allEntities) {
+        if (this.stunTimer > 0) {
+            this.stunTimer--;
+            this.isWhirlwinding = false;
+            return;
+        }
+
+        this.updateSlowStatus();
+
+        let toPlayer = player.pos.sub(this.pos);
+        let dist = toPlayer.mag();
+
+        if (this.type === MOB_TYPES.MELEE_DPS) {
+            if (this.hp / this.maxHp < 0.3 && this.abilityTimer === 0 && !this.isWhirlwinding) {
+                let escapeDir = this.pos.sub(player.pos).normalize();
+                let targetPos = this.pos.add(escapeDir.mult(MELEE_LEAP_SLAM_RANGE));
+                mobLeapSlam(this, player, allEntities, targetPos);
+                this.abilityTimer = MELEE_LEAP_SLAM_COOLDOWN;
+                this.basicAttackTimer = 0;
+            }
+            else if (dist < MELEE_WHIRLWIND_RANGE * 1.5 && this.abilityTimer === 0 && !this.isWhirlwinding) {
+                mobWhirlwind(this, player);
+                this.abilityTimer = MELEE_WHIRLWIND_DURATION + 60;
+                this.basicAttackTimer = 0;
+            }
+            else if (!this.isWhirlwinding && this.abilityTimer === 0 && dist > 30 && dist < MELEE_LEAP_SLAM_RANGE + 100) {
+                mobLeapSlam(this, player, allEntities);
+                this.abilityTimer = MELEE_LEAP_SLAM_COOLDOWN;
+                this.basicAttackTimer = 0;
+            }
+        }
+
+        if (this.basicAttackTimer > 0) this.basicAttackTimer--;
+        if (this.abilityTimer > 0) this.abilityTimer--;
+
+        let desiredVector = new Vector(0,0);
+        const isLowHP = this.hp / this.maxHp < 0.3;
+        if (isLowHP && this.type !== MOB_TYPES.MELEE_DPS) {
+            const nearestHealer = findNearestHealer(this, allEntities);
+            desiredVector = nearestHealer ? nearestHealer.pos.sub(this.pos).normalize() : this.pos.sub(player.pos).normalize();
+        } else {
+            if (this.type === MOB_TYPES.MELEE_DPS) {
+                if (dist > 30) desiredVector = toPlayer.normalize();
+            } else if (this.type === MOB_TYPES.RANGED_DPS) {
+                if (dist < RANGED_DPS_SAFE_DISTANCE) desiredVector = this.pos.sub(player.pos).normalize();
+                else if (dist > RANGED_DPS_SAFE_DISTANCE + 50) desiredVector = toPlayer.normalize();
+            } else if (this.type === MOB_TYPES.HEALER) {
+                if (dist < HEALER_SAFE_DISTANCE) desiredVector = this.pos.sub(player.pos).normalize();
+                else if (dist > HEALER_SAFE_DISTANCE + 50) desiredVector = toPlayer.normalize();
+            }
+        }
+
+        let avoidanceVector = this.getAvoidanceVector(projectiles, splats);
+        let finalMoveDir = desiredVector.add(avoidanceVector.mult(2.0));
+        if (finalMoveDir.mag() > 0) finalMoveDir = finalMoveDir.normalize();
+
+        let currentSpeed = this.speed;
+        if (this.type === MOB_TYPES.MELEE_DPS && this.isWhirlwinding) currentSpeed *= 0.75;
+        currentSpeed *= this.getCurrentSlowMultiplier();
+
+        this.pos = this.pos.add(finalMoveDir.mult(currentSpeed));
+
+        if (!this.isWhirlwinding && this.basicAttackTimer === 0) {
+            this.dispatchBasicAttack(player);
+            this.basicAttackTimer = this.basicAttackCooldown;
+        }
+        if (this.type !== MOB_TYPES.MELEE_DPS && this.abilityTimer === 0) {
+            this.dispatchAbility(player, allEntities);
+        }
+    }
+    draw(ctx) {
+        if (this.stunTimer > 0) {
+            ctx.font = "bold 12px Arial";
+            ctx.fillStyle = "yellow";
+            ctx.textAlign = 'center';
+            ctx.fillText("STUNNED", this.pos.x, this.pos.y - this.radius - 10);
+        }
+        if (this.slowStacks.length > 0) {
+            ctx.font = "bold 12px Arial";
+            ctx.fillStyle = SKILL_STATS.SACRED_FLAME.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(`SLOW x${this.slowStacks.length}`, this.pos.x, this.pos.y + this.radius + 30);
+        }
+        ctx.fillStyle = '#333';
+        ctx.fillRect(this.pos.x - 30, this.pos.y - 45, 60, 8);
+        ctx.fillStyle = this.color;
+        let pct = Math.max(0, this.hp / this.maxHp);
+        ctx.fillRect(this.pos.x - 30, this.pos.y - 45, 60 * pct, 8);
+        super.draw(ctx);
+
+        ctx.font = "bold 10px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = 'center';
+        ctx.fillText(MOB_STATS[this.type].label, this.pos.x, this.pos.y + this.radius + 15);
+
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        const playerDir = player.pos.sub(this.pos).normalize();
+        let angle = Math.atan2(playerDir.y, playerDir.x);
+        ctx.rotate(angle);
+
+        if (this.type === MOB_TYPES.MELEE_DPS) {
+            const yOffset = 20;
+            if (this.isWhirlwinding) ctx.rotate(globalFrameCount * 0.4);
+            ctx.fillStyle = '#444';
+            ctx.fillRect(0, -2 + yOffset, 10, 4);
+            ctx.fillStyle = '#666';
+            ctx.fillRect(10, -8 + yOffset, 4, 16);
+            ctx.fillStyle = '#ddd';
+            ctx.beginPath();
+            ctx.moveTo(14, -6 + yOffset);
+            ctx.lineTo(45, -3 + yOffset);
+            ctx.lineTo(45, 3 + yOffset);
+            ctx.lineTo(14, 6 + yOffset);
+            ctx.fill();
+            ctx.fillStyle = '#aaa';
+            ctx.fillRect(14, -1 + yOffset, 30, 2);
+        } else if (this.type === MOB_TYPES.RANGED_DPS) {
+            ctx.strokeStyle = '#630';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 35, -Math.PI/2, Math.PI/2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, -35);
+            ctx.lineTo(0, 35);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        } else if (this.type === MOB_TYPES.HEALER) {
+            const yOffset = 10;
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(5, 2 + yOffset);
+            ctx.lineTo(40, 1 + yOffset);
+            ctx.lineTo(40, -1 + yOffset);
+            ctx.lineTo(5, -2 + yOffset);
+            ctx.fill();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ffff00';
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(42, 0 + yOffset, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+    }
+}
+
+class Projectile extends Entity {
+    constructor(x, y, dir, speed, damage, color = 'orange', radius = 5, owner = null, isSacredFlame = false) {
+        super(x, y, radius, color);
+        this.velocity = dir.normalize().mult(speed);
+        this.damage = damage;
+        this.life = 100;
+        this.owner = owner;
+        this.isSacredFlame = isSacredFlame;
+    }
+    update() {
+        this.pos = this.pos.add(this.velocity);
+        this.life--;
+        if (this.life <= 0) this.dead = true;
+    }
+}
+
+class Splat {
+    constructor(x, y, radius, color, duration, onComplete) {
+        this.x = x; this.y = y; this.radius = radius;
+        this.color = color;
+        this.maxDuration = duration;
+        this.duration = duration;
+        this.onComplete = onComplete;
+        this.dead = false;
+        this.type = 'GENERIC';
+    }
+    update() {
+        this.duration--;
+        if (this.duration <= 0) {
+            this.dead = true;
+            if (this.onComplete) this.onComplete();
+        }
+    }
+    draw(ctx) {
+        ctx.globalAlpha = this.duration / this.maxDuration;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class SwordSplat extends Splat {
+    constructor(x, y, radius, color, duration, type, angle = 0, onComplete = null) {
+        super(x, y, radius, color, duration, onComplete);
+        this.type = type;
+        this.startAngle = angle;
+    }
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.duration / this.maxDuration;
+        ctx.translate(this.x, this.y);
+        if (this.type === 'WHIRLWIND') {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 100, 0, 0.8)';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class ContinuousSplat extends SwordSplat {
+    constructor(enemy, radius, color, duration, damage) {
+        super(enemy.pos.x, enemy.pos.y, radius, color, duration, 'WHIRLWIND', 0, () => {
+            enemy.isWhirlwinding = false;
+        });
+        this.enemy = enemy;
+        this.damage = damage;
+        this.tickRate = 15;
+        this.damageTimer = 0;
+        this.enemy.isWhirlwinding = true;
+    }
+    update(player) {
+        super.update();
+        if (this.dead || this.enemy.dead) {
+            this.dead = true;
+            return;
+        }
+        this.x = this.enemy.pos.x;
+        this.y = this.enemy.pos.y;
+        this.damageTimer++;
+        if (this.damageTimer >= this.tickRate) {
+            if (player.pos.sub(this.enemy.pos).mag() < this.radius) {
+                player.takeDamage(this.damage);
+            }
+            this.damageTimer = 0;
+        }
+    }
+}
+
+/* ================================
+   Game objects
+   ================================ */
+let player = new Player();
+let enemies = [];
+let projectiles = [];
+let splats = [];
+let floatingTexts = [];
+
+/* ================================
+   Enemy abilities
+   ================================ */
+function mobWhirlwind(enemy, player) {
+    splats.push(new ContinuousSplat(enemy, MELEE_WHIRLWIND_RANGE, 'rgba(255,100,0,0.8)', MELEE_WHIRLWIND_DURATION, MELEE_WHIRLWIND_DAMAGE_PER_TICK));
+}
+function mobLeapSlam(enemy, player, allEntities, overrideTargetPos = null) {
+    let targetPosVector;
+    if (overrideTargetPos) {
+        targetPosVector = overrideTargetPos;
+    } else {
+        const toPlayer = player.pos.sub(enemy.pos);
+        const jumpDistance = Math.min(toPlayer.mag(), MELEE_LEAP_SLAM_RANGE);
+        targetPosVector = enemy.pos.add(toPlayer.normalize().mult(jumpDistance));
+    }
+    const warningSplat = new Splat(
+        targetPosVector.x, targetPosVector.y, MELEE_LEAP_SLAM_DMG_RADIUS,
+        'rgba(255, 0, 0, 0.4)', MELEE_LEAP_SLAM_ACT_TIME, () => {
+            enemy.pos.x = targetPosVector.x;
+            enemy.pos.y = targetPosVector.y;
+            if (player.pos.sub(enemy.pos).mag() < MELEE_LEAP_SLAM_DMG_RADIUS) {
+                player.takeDamage(MELEE_LEAP_SLAM_DAMAGE);
+                player.slowTimer = PLAYER_SLOW_DURATION_FRAMES;
+                floatingTexts.push(new FloatingText("Slowed!", player.pos.x, player.pos.y - 70, 'dmg-player'));
+            }
+            splats.push(new Splat(enemy.pos.x, enemy.pos.y, MELEE_LEAP_SLAM_DMG_RADIUS, 'rgba(255, 100, 0, 0.8)', 10, null));
+        }
+    );
+    splats.push(warningSplat);
+}
+function mobMeleeAtWill(enemy, player) {
+    let dist = player.pos.sub(enemy.pos).mag();
+    if (dist < 40) {
+        const MELEE_AT_WILL_DAMAGE = 50;
+        player.takeDamage(MELEE_AT_WILL_DAMAGE);
+        floatingTexts.push(new FloatingText(`${MELEE_AT_WILL_DAMAGE}`, player.pos.x, player.pos.y - 40, 'dmg-player'));
+    }
+}
+function mobRangedAtWill(enemy, player) {
+    const color = '#9900ff', radius = 6, speed = 8, damage = 150;
+    let dir = player.pos.sub(enemy.pos);
+    projectiles.push(new Projectile(enemy.pos.x, enemy.pos.y, dir, speed, damage, color, radius, enemy));
+}
+function mobHealerAtWill(enemy, player) {
+    const color = '#ffaa00', radius = 5, speed = 6, damage = 50;
+    let dir = player.pos.sub(enemy.pos);
+    projectiles.push(new Projectile(enemy.pos.x, enemy.pos.y, dir, speed, damage, color, radius, enemy));
+}
+function mobRangedSingle(enemy, player, damage = 100) {
+    if (player.pos.sub(enemy.pos).mag() < RANGED_ST_RANGE) {
+        const dir = player.pos.sub(enemy.pos);
+        projectiles.push(new Projectile(enemy.pos.x, enemy.pos.y, dir, 10, damage, '#ff00ff', 8, enemy));
+    }
+}
+function mobRangedAoE(enemy, player) {
+    if (player.pos.sub(enemy.pos).mag() < RANGED_ST_RANGE) {
+        const targetPos = player.pos;
+        const durationFrames = 60;
+        splats.push(new Splat(targetPos.x, targetPos.y, RANGED_AOE_RADIUS, 'rgba(128,0,128,0.5)', durationFrames, () => {
+            if (player.pos.sub(targetPos).mag() < RANGED_AOE_RADIUS) {
+                player.poisonTimer = 8 * FPS; // 8s poison
+                floatingTexts.push(new FloatingText("Poisoned!", player.pos.x, player.pos.y - 70, 'poison'));
+            }
+        }));
+    }
+}
+function mobHealingWord(enemy, targetAlly) {
+    if (targetAlly) {
+        const healAmount = 500;
+        targetAlly.hp = Math.min(targetAlly.maxHp, targetAlly.hp + healAmount);
+        floatingTexts.push(new FloatingText(`+${healAmount}`, targetAlly.pos.x, targetAlly.pos.y - 40, 'heal'));
+        splats.push(new Splat(targetAlly.pos.x, targetAlly.pos.y, 40, 'rgba(200, 255, 200, 0.9)', 10, null));
+    }
+}
+function mobBastion(enemy, targetAlly, allEnemies) {
+    if (targetAlly) {
+        const healAmount = 800;
+        const targetPos = targetAlly.pos;
+        splats.push(new Splat(targetPos.x, targetPos.y, HEALER_BASTION_RADIUS, 'rgba(0, 255, 255, 0.4)', 30, () => {
+            allEnemies.forEach(ally => {
+                if (ally.pos.sub(targetPos).mag() < HEALER_BASTION_RADIUS) {
+                    ally.hp = Math.min(ally.maxHp, ally.hp + healAmount);
+                    floatingTexts.push(new FloatingText(`+${healAmount}`, ally.pos.x, ally.pos.y - 60, 'heal'));
+                }
+            });
+        }));
+    }
+}
+
+/* ================================
+   Leaderboard
+   ================================ */
+function initLeaderboard() {
+    const KEY = 'cleric_leaderboard_v30';
+    const storedLeaderboard = localStorage.getItem(KEY);
+    leaderboard = storedLeaderboard ? JSON.parse(storedLeaderboard) : [];
+    renderLeaderboard();
+}
+function updateLeaderboard(finalTime, finalKills) {
+    const overallScore = Math.floor(finalKills * SCORE_KILL_POINTS + finalTime * SCORE_TIME_POINTS);
+    if (overallScore === 0) return;
+    const newScore = { time: Math.floor(finalTime), kills: finalKills, score: overallScore };
+    leaderboard.push(newScore);
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 5);
+    try { localStorage.setItem('cleric_leaderboard_v30', JSON.stringify(leaderboard)); } catch (e) {}
+    renderLeaderboard();
+}
+function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '';
+    if (leaderboard.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #777;">No scores yet!</td></tr>';
+        return;
+    }
+    leaderboard.forEach((score, index) => {
+        const row = tbody.insertRow();
+        row.innerHTML = `<td>${index + 1}</td><td>${score.score}</td><td>${score.time}.0s</td><td>${score.kills}</td>`;
+    });
+}
+
+/* ================================
+   Spawning & Control
+   ================================ */
+function spawnMob() {
+    let x, y;
+    do {
+        x = Math.random() * CANVAS_WIDTH;
+        y = Math.random() * CANVAS_HEIGHT;
+    } while (new Vector(x, y).sub(new Vector(NODE_CENTER_X, NODE_CENTER_Y)).mag() < NODE_RADIUS + 100);
+    const randomType = mobTypesList[Math.floor(Math.random() * mobTypesList.length)];
+    enemies.push(new Enemy(x, y, randomType));
+}
+function startNewGame() {
+    player = new Player();
+    enemies = [];
+    projectiles = [];
+    splats = [];
+    floatingTexts = [];
+    floatingTexts.push(new FloatingText("GAME START", CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 'heal'));
+    kills = 0;
+    timer = 0;
+    captureTimerFrames = 0;
+    globalFrameCount = 0;
+    gameActive = true;
+    isPaused = false;
+    document.getElementById('game-end-message').style.display = 'none';
+    document.getElementById('restart-button').style.display = 'none';
+}
+
+/* ================================
+   Player abilities (from SKILL_STATS)
+   ================================ */
+function castSacredFlame() {
+    const s = SKILL_STATS.SACRED_FLAME;
+    if (player.isChanneling || player.isCasting) return;
+    if (globalFrameCount % s.castFrames === 0) {
+        let dir = new Vector(mouse.x, mouse.y).sub(player.pos);
+        projectiles.push(new Projectile(
+            player.pos.x, player.pos.y, dir,
+            s.projectileSpeed, s.damage, s.color, 12, player, true
+        ));
+        player.addAp(s.apGain);
+    }
+}
+function castLanceOfFaith() {
+    const s = SKILL_STATS.LANCE_OF_FAITH;
+    if (player.isChanneling || player.isCasting) return;
+    if (globalFrameCount % s.tickFrames === 0) {
+        let dir = new Vector(mouse.x, mouse.y).sub(player.pos);
+        enemies.forEach(e => {
+            let toEnemy = e.pos.sub(player.pos);
+            let angle = Math.abs(Math.atan2(dir.y, dir.x) - Math.atan2(toEnemy.y, toEnemy.x));
+            if (toEnemy.mag() < s.range && angle < s.aimToleranceRad) {
+                e.hp -= s.damage;
+                floatingTexts.push(new FloatingText(`${s.damage}`, e.pos.x, e.pos.y - 40, 'dmg-enemy'));
+                player.addAp(s.apGainPerTick);
+                if (e.hp <= 0) { e.dead = true; kills++; player.addAp(50); }
+            }
+        });
+    }
+}
+function castDauntingLight() {
+    const s = SKILL_STATS.DAUNTING_LIGHT;
+    if (player.isChanneling || player.isCasting) return;
+    if (player.cooldowns.q > 0 || player.divinity < s.divinityCost) {
+        if (player.divinity < s.divinityCost) floatingTexts.push(new FloatingText("Need Divinity!", player.pos.x, player.pos.y - 50, 'info'));
+        return;
+    }
+    player.divinity -= s.divinityCost;
+    player.cooldowns.q = player.maxCooldowns.q;
+    let targetPos = new Vector(mouse.x, mouse.y);
+    player.isCasting = true;
+    player.castTimer = s.castFrames;
+    player.castCallback = () => {
+        splats.push(new Splat(targetPos.x, targetPos.y, s.radius, 'gold', 12, () => {
+            enemies.forEach(e => {
+                if (e.pos.sub(targetPos).mag() < s.radius) {
+                    e.hp -= s.damage;
+                    floatingTexts.push(new FloatingText(`${s.damage}!`, e.pos.x, e.pos.y - 60, 'dmg-enemy'));
+                    player.addAp(s.apGainOnHit);
+                    if (e.hp <= 0) { e.dead = true; kills++; player.addAp(50); }
+                }
+            });
+        }));
+    };
+    floatingTexts.push(new FloatingText("Casting...", player.pos.x, player.pos.y - 50, 'info'));
+}
+function castSunBurst() {
+    const s = SKILL_STATS.SUNBURST;
+    if (player.isChanneling || player.isCasting) return;
+    if (player.cooldowns.e > 0) return;
+
+    player.cooldowns.e = player.maxCooldowns.e;
+    player.hp = Math.min(MAX_HP, player.hp + s.heal);
+    floatingTexts.push(new FloatingText(`+${s.heal}`, player.pos.x - 30, player.pos.y - 40, 'heal'));
+
+    splats.push(new Splat(player.pos.x, player.pos.y, s.impactRadius, 'orange', 10, null));
+    enemies.forEach(e => {
+        let distVec = e.pos.sub(player.pos);
+        if (distVec.mag() < s.impactRadius) {
+            e.hp -= s.damage;
+            floatingTexts.push(new FloatingText(`${s.damage}`, e.pos.x, e.pos.y - 40, 'dmg-enemy'));
+            if (!e.isWhirlwinding && e.stunTimer <= 0) {
+                const knockbackDir = distVec.normalize();
+                e.pos = e.pos.add(knockbackDir.mult(s.knockbackDistance));
+            } else {
+                floatingTexts.push(new FloatingText("CC Immune", e.pos.x, e.pos.y - 60, 'info'));
+            }
+            if (e.hp <= 0) { e.dead = true; kills++; player.addAp(50); }
+        }
+    });
+}
+function castBastion() {
+    const s = SKILL_STATS.BASTION_OF_HEALTH;
+    if (player.isChanneling || player.isCasting) return;
+    if (player.cooldowns.r > 0 || player.divinity < s.divinityCost) {
+        if (player.divinity < s.divinityCost) floatingTexts.push(new FloatingText("Need Divinity!", player.pos.x, player.pos.y - 50, 'info'));
+        return;
+    }
+    player.divinity -= s.divinityCost;
+    player.cooldowns.r = player.maxCooldowns.r;
+    let targetPos = new Vector(mouse.x, mouse.y);
+    player.isCasting = true;
+    player.castTimer = s.castFrames;
+    player.castCallback = () => {
+        if (player.pos.sub(targetPos).mag() < s.radius) {
+            player.hp = Math.min(MAX_HP, player.hp + s.heal);
+            floatingTexts.push(new FloatingText(`+${s.heal}`, player.pos.x, player.pos.y - 40, 'heal'));
+        }
+        splats.push(new Splat(targetPos.x, targetPos.y, s.radius, '#00ff00', 5, null));
+    };
+    floatingTexts.push(new FloatingText("Casting Bastion...", player.pos.x, player.pos.y - 50, 'info'));
+}
+function castDaily() {
+    const s = SKILL_STATS.GUARDIAN_OF_FAITH;
+    if (player.isChanneling || player.isCasting) return;
+    if (player.ap < MAX_AP) {
+        floatingTexts.push(new FloatingText("Not enough AP!", player.pos.x, player.pos.y - 50, 'info'));
+        return;
+    }
+    player.ap = 0;
+    player.cooldowns.daily = player.maxCooldowns.daily;
+    let targetPos = new Vector(mouse.x, mouse.y);
+    player.guardianHoTTimer = s.hotDurationFrames;
+    floatingTexts.push(new FloatingText("GUARDIAN: HoT Active", player.pos.x, player.pos.y - 70, 'heal'));
+    splats.push(new Splat(targetPos.x, targetPos.y, s.radius, 'white', 90, () => {
+        enemies.forEach(e => {
+            if (e.pos.sub(targetPos).mag() < s.radius) {
+                e.hp -= s.damage;
+                e.stunTimer = s.stunFrames;
+                floatingTexts.push(new FloatingText(`${s.damage}!`, e.pos.x, e.pos.y - 80, 'dmg-enemy'));
+                floatingTexts.push(new FloatingText("STUNNED", e.pos.x, e.pos.y - 100, 'info'));
+                if (e.hp <= 0) { e.dead = true; }
+            }
+        });
+    }));
+}
+
+/* ================================
+   Main update/draw loop
+   ================================ */
+function update() {
+    globalFrameCount++;
+    if (globalFrameCount >= GAME_END_FRAME) {
+        if (gameActive) {
+            gameActive = false;
+            updateLeaderboard(timer, kills);
+            const msg = document.getElementById('game-end-message');
+            msg.innerText = "SURVIVED 2 MINS!";
+            msg.style.color = '#2ecc71';
+            msg.style.borderColor = '#2ecc71';
+            msg.style.display = 'block';
+            document.getElementById('restart-button').style.display = 'block';
+        }
+        return;
+    }
+    if (!gameActive) return;
+
+    const isPlayerOnNode = isOnNode(player);
+    const isEnemyOnNode = enemies.some(isOnNode);
+    if (isPlayerOnNode && !isEnemyOnNode) captureTimerFrames++;
+    else if (!isPlayerOnNode && isEnemyOnNode) captureTimerFrames = Math.max(0, captureTimerFrames - 1);
+    timer = captureTimerFrames / FPS;
+
+    player.isLancing = mouse.rightDown && !player.isChanneling && !player.isDodging && !player.isCasting;
+    player.update();
+
+    let mobSpawnRateFrames;
+    if (globalFrameCount < STAGE_1_END) mobSpawnRateFrames = SPAWN_RATE_STAGE_1;
+    else if (globalFrameCount < STAGE_2_END) mobSpawnRateFrames = SPAWN_RATE_STAGE_2;
+    else mobSpawnRateFrames = SPAWN_RATE_STAGE_3;
+
+    const shouldSpawn = (globalFrameCount === 1) || (globalFrameCount > 1 && globalFrameCount % mobSpawnRateFrames === 0);
+    if (shouldSpawn && enemies.length < 5) spawnMob();
+
+    let inputMove = new Vector(0,0);
+    if (keys['w']) inputMove.y -= 1;
+    if (keys['s']) inputMove.y += 1;
+    if (keys['a']) inputMove.x -= 1;
+    if (keys['d']) inputMove.x += 1;
+    if (keys['shift']) player.initiateDodge(inputMove);
+    
+    if (!player.isDodging && !player.isCasting) {
+        if (mouse.leftDown) castSacredFlame();
+        if (mouse.rightDown) castLanceOfFaith();
+    }
+
+    splats.forEach(s => {
+        if (s.type === 'WHIRLWIND' && s instanceof ContinuousSplat) {
+            if (s.enemy && !s.enemy.dead) s.update(player);
+            else s.dead = true;
+        } else {
+            s.update();
+        }
+    });
+
+    projectiles.forEach(p => p.update());
+    floatingTexts.forEach(t => t.update());
+    enemies.forEach(e => e.update(player, enemies));
+    
+    projectiles = projectiles.filter(p => !p.dead);
+    splats = splats.filter(s => !s.dead);
+    floatingTexts = floatingTexts.filter(t => !t.dead);
+    enemies = enemies.filter(e => {
+        if (e.dead) {
+            floatingTexts.push(new FloatingText("ELIMINATED", e.pos.x, e.pos.y - 70, 'info'));
+            return false;
+        }
+        return true;
+    });
+
+    // Player projectiles vs enemies
+    projectiles.forEach(p => {
+        if (p.owner === player) {
+            enemies.forEach(e => {
+                if (e.pos.sub(p.pos).mag() < e.radius + p.radius && !p.dead && !e.dead) {
+                    e.hp -= p.damage;
+                    if (p.isSacredFlame) e.applySlow();
+                    p.dead = true;
+                    floatingTexts.push(new FloatingText(p.damage, e.pos.x, e.pos.y - 40, 'dmg-enemy'));
+                    if (e.hp <= 0) { e.dead = true; kills++; player.addAp(50); }
+                }
+            });
+        }
+    });
+
+    // Enemy projectiles vs player
+    projectiles.forEach(p => {
+        if (p.owner !== player && p.pos.sub(player.pos).mag() < player.radius + p.radius && !p.dead) {
+            player.takeDamage(p.damage);
+            p.dead = true;
+        }
+    });
+
+    updateUI();
+}
+
+function draw() {
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+    for(let x=0; x<CANVAS_WIDTH; x+=GRID_SQUARE_SIZE) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke(); }
+    for(let y=0; y<CANVAS_HEIGHT; y+=GRID_SQUARE_SIZE) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke(); }
+
+    const isPlayerOnNode = isOnNode(player);
+    const isEnemyOnNode = enemies.some(isOnNode);
+    let strokeColor, nodeFill;
+    if (isPlayerOnNode && !isEnemyOnNode) { strokeColor = '#00ff7f'; nodeFill = 'rgba(0, 255, 127, 0.15)'; }
+    else if (isEnemyOnNode && !isPlayerOnNode) { strokeColor = '#ff4444'; nodeFill = 'rgba(255, 0, 0, 0.15)'; }
+    else if (isPlayerOnNode && isEnemyOnNode) { strokeColor = '#ffff00'; nodeFill = 'rgba(255, 255, 0, 0.15)'; }
+    else { strokeColor = '#00994c'; nodeFill = 'rgba(0, 153, 76, 0.05)'; }
+    ctx.beginPath();
+    ctx.arc(NODE_CENTER_X, NODE_CENTER_Y, NODE_RADIUS, 0, Math.PI * 2);
+    ctx.strokeStyle = strokeColor; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = nodeFill; ctx.fill();
+
+    splats.forEach(s => s.draw(ctx));
+    enemies.forEach(e => e.draw(ctx));
+    player.draw(ctx);
+    projectiles.forEach(p => p.draw(ctx));
+
+    if (mouse.rightDown && !player.isChanneling && !player.isDodging && !player.isCasting) {
+        let dir = new Vector(mouse.x, mouse.y).sub(player.pos).normalize().mult(SKILL_STATS.LANCE_OF_FAITH.range);
+        let end = player.pos.add(dir);
+        ctx.beginPath();
+        ctx.moveTo(player.pos.x, player.pos.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = 'rgba(255, 255, 200, 0.8)';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(player.pos.x, player.pos.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = `rgba(255, 220, 100, ${0.2 + Math.random() * 0.3})`;
+        ctx.lineWidth = 15 + Math.random() * 5;
+        ctx.stroke();
+    }
+
+    if (player.isChanneling) {
+        ctx.save();
+        ctx.translate(player.pos.x, player.pos.y);
+        ctx.rotate(globalFrameCount * 0.1);
+        ctx.beginPath();
+        ctx.arc(0, 0, 35, 0, Math.PI * 1.5);
+        ctx.strokeStyle = '#00bfff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.restore();
+        ctx.font = "bold 14px Arial";
+        ctx.fillStyle = "#00bfff";
+        ctx.textAlign = 'center';
+        ctx.fillText("Channeling...", player.pos.x, player.pos.y + 55);
+    }
+
+    floatingTexts.forEach(t => t.draw(ctx));
+    
+    if (isPaused) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.font = "bold 72px Arial";
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText("PAUSED", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+        ctx.font = "24px Arial";
+        ctx.fillText("Press SPACE to Resume", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60);
+    }
+}
+
+/* ================================
+   UI & Tooltips
+   ================================ */
+function updateUI() {
+    document.getElementById('hp-fill').style.height = (player.hp / MAX_HP * 100) + '%';
+    document.getElementById('hp-text').innerText = Math.max(0, Math.ceil(player.hp));
+    document.getElementById('ap-fill').style.height = (player.ap / MAX_AP * 100) + '%';
+    let staminaColor = player.isExhausted ? '#ff0000' : '#4caf50';
+    document.getElementById('stamina-fill').style.width = (player.stamina / MAX_STAMINA * 100) + '%';
+    document.getElementById('stamina-fill').style.backgroundColor = staminaColor;
+    document.getElementById('divinity-fill').style.width = (player.divinity / MAX_DIVINITY * 100) + '%';
+    document.getElementById('cd-q').style.height = (player.cooldowns.q / player.maxCooldowns.q * 100) + '%';
+    document.getElementById('cd-e').style.height = (player.cooldowns.e / player.maxCooldowns.e * 100) + '%';
+    document.getElementById('cd-r').style.height = (player.cooldowns.r / player.maxCooldowns.r * 100) + '%';
+    document.getElementById('cd-daily').style.height = (player.cooldowns.daily / player.maxCooldowns.daily * 100) + '%';
+    const overallScore = Math.floor(kills * SCORE_KILL_POINTS + timer * SCORE_TIME_POINTS);
+    document.getElementById('score-display').innerText = overallScore;
+    document.getElementById('timer-display').innerText = timer.toFixed(1);
+    document.getElementById('kills-display').innerText = kills;
+}
+
+function fmtFrames(frames) { return `${(frames / FPS).toFixed(2)}s (${frames}f)`; }
+
+function setTooltip(el, title, lines, desc) {
+    const tooltip = el.querySelector('.tooltip');
+    tooltip.innerHTML = `
+        <h4>${title}</h4>
+        ${lines.map(l => `<span class="stat">${l}</span>`).join('')}
+        <span class="desc">${desc}</span>
+    `;
+}
+
+function initTooltips() {
+    // LMB: Sacred Flame
+    {
+        const s = SKILL_STATS.SACRED_FLAME;
+        const el = document.getElementById('skill-lmb');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)} | Mag: ${s.damage}`,
+            `Fire Rate: ${s.castFrames}f`,
+            `Slow: ${(s.slowPercent*100).toFixed(0)}% per stack (${(s.slowDurationFrames/FPS).toFixed(1)}s)`
+        ], s.desc);
+    }
+    // RMB: Lance of Faith
+    {
+        const s = SKILL_STATS.LANCE_OF_FAITH;
+        const el = document.getElementById('skill-rmb');
+        setTooltip(el, s.name, [
+            `Tick: ${fmtFrames(s.tickFrames)} | Mag: ${s.damage}`,
+            `Range: ${s.range}px`,
+            `Beam slow: ${(1 - s.slowMultiplierWhileChannel)*100}%`
+        ], s.desc);
+    }
+    // TAB: Channel Divinity
+    {
+        const s = SKILL_STATS.CHANNEL_DIVINITY;
+        const el = document.getElementById('skill-tab');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)}`,
+            `Regen: +${DIVINITY_REGEN_CHANNEL}/f while held`
+        ], s.desc);
+    }
+    // Q: Daunting Light
+    {
+        const s = SKILL_STATS.DAUNTING_LIGHT;
+        const el = document.getElementById('skill-q');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)} | Mag: ${s.damage} | CD: ${fmtFrames(s.cooldownFrames)}`,
+            `Radius: ${s.radius}px`,
+            `Consumes Divinity (${s.divinityCost})`
+        ], s.desc);
+    }
+    // E: Sun Burst
+    {
+        const s = SKILL_STATS.SUNBURST;
+        const el = document.getElementById('skill-e');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)} | Mag: ${s.damage} | Self-Heal: ${s.heal} | CD: ${fmtFrames(s.cooldownFrames)}`,
+            `Radius: ${s.impactRadius}px | Knockback: ${s.knockbackDistance}px`
+        ], s.desc);
+    }
+    // R: Bastion of Health
+    {
+        const s = SKILL_STATS.BASTION_OF_HEALTH;
+        const el = document.getElementById('skill-r');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)} | Heal: ${s.heal} | CD: ${fmtFrames(s.cooldownFrames)}`,
+            `Radius: ${s.radius}px`,
+            `Consumes Divinity (${s.divinityCost}) | NO MOVEMENT WHILE CASTING`
+        ], s.desc);
+    }
+    // Daily: Guardian of Faith
+    {
+        const s = SKILL_STATS.GUARDIAN_OF_FAITH;
+        const el = document.getElementById('skill-daily');
+        setTooltip(el, s.name, [
+            `Cast: ${fmtFrames(s.castFrames)} | Mag: ${s.damage}`,
+            `Stun: ${(s.stunFrames/FPS).toFixed(1)}s | HoT: ${s.hotPerSecond}/s for ${(s.hotDurationFrames/FPS).toFixed(1)}s`,
+            `CD overlay: ${fmtFrames(s.cooldownFrames)}`
+        ], s.desc);
+    }
+}
+
+/* ================================
+   Input & Loop
+   ================================ */
+function loop() {
+    if (!isPaused) update();
+    draw();
+    requestAnimationFrame(loop);
+}
+window.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (key === ' ') { e.preventDefault(); isPaused = !isPaused; return; }
+    if (['tab', 'shift', 'w', 'a', 's', 'd'].includes(key)) e.preventDefault();
+    keys[key] = true;
+    if (!isPaused && gameActive) {
+        if (key === 'q') castDauntingLight();
+        if (key === 'e') castSunBurst();
+        if (key === 'r') castBastion();
+        if (key === '1') castDaily();
+    }
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', e => {
+    if (!isPaused && gameActive) {
+        if(e.button === 0) mouse.leftDown = true;
+        if(e.button === 2) mouse.rightDown = true;
+    }
+});
+window.addEventListener('mouseup', e => {
+    if(e.button === 0) mouse.leftDown = false;
+    if(e.button === 2) mouse.rightDown = false;
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+/* Mobile-specific input: touch aiming */
+canvas.addEventListener('touchstart', e => {
+    if (!isPaused && gameActive) {
+        const t = e.touches[0];
+        mouse.x = t.clientX;
+        mouse.y = t.clientY;
+    }
+    e.preventDefault();
+}, {passive:false});
+canvas.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    mouse.x = t.clientX;
+    mouse.y = t.clientY;
+    e.preventDefault();
+}, {passive:false});
+canvas.addEventListener('touchend', e => {
+    mouse.leftDown = false;
+    mouse.rightDown = false;
+    e.preventDefault();
+}, {passive:false});
+
+/* Mobile controls mapping */
+function bindButton(id, onDown, onUp) {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); onDown(); }, {passive:false});
+    btn.addEventListener('touchend',   e => { e.preventDefault(); onUp(); },   {passive:false});
+}
+bindButton('btn-up',   ()=>{ keys['w']=true; }, ()=>{ keys['w']=false; });
+bindButton('btn-down', ()=>{ keys['s']=true; }, ()=>{ keys['s']=false; });
+bindButton('btn-left', ()=>{ keys['a']=true; }, ()=>{ keys['a']=false; });
+bindButton('btn-right',()=>{ keys['d']=true; }, ()=>{ keys['d']=false; });
+bindButton('btn-fire', ()=>{ mouse.leftDown=true; }, ()=>{ mouse.leftDown=false; });
+bindButton('btn-beam', ()=>{ mouse.rightDown=true; }, ()=>{ mouse.rightDown=false; });
+bindButton('btn-dodge',()=>{ 
+    // Use current movement input for dodge direction
+    let inputMove = new Vector(0,0);
+    if (keys['w']) inputMove.y -= 1;
+    if (keys['s']) inputMove.y += 1;
+    if (keys['a']) inputMove.x -= 1;
+    if (keys['d']) inputMove.x += 1;
+    player.initiateDodge(inputMove);
+}, ()=>{ /* no-op on release */ });
+bindButton('btn-heal', ()=>{ castBastion(); }, ()=>{ /* no-op */ });
+bindButton('btn-aoe',  ()=>{ castSunBurst(); }, ()=>{ /* no-op */ });
+bindButton('btn-daily',()=>{ castDaily(); },   ()=>{ /* no-op */ });
+
+/* Responsive canvas + node center on orientation change */
+function resizeGame() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    canvas.width = w;
+    canvas.height = h;
+    NODE_CENTER_X = w / 2;
+    NODE_CENTER_Y = h / 2;
+}
+window.addEventListener('resize', resizeGame);
+
+/* Bootstrap */
+function bootstrap() {
+    initLeaderboard();
+    initTooltips();
+    loop();
+}
+bootstrap();
+</script>
+</body>
+</html>
